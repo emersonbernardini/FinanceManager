@@ -326,6 +326,37 @@ class StorageService {
     }
   }
 
+  // ==================== GENÉRICOS ====================
+
+  /**
+   * Busca um valor genérico pelo key
+   * @param {string} key - Chave do AsyncStorage
+   * @returns {Promise<string|null>} Valor armazenado
+   */
+  async get(key) {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.error('Erro ao buscar valor:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Salva um valor genérico pelo key
+   * @param {string} key - Chave do AsyncStorage
+   * @param {string} value - Valor a ser salvo
+   * @returns {Promise<void>}
+   */
+  async set(key, value) {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch (error) {
+      console.error('Erro ao salvar valor:', error);
+      throw error;
+    }
+  }
+
   // ==================== UTILITÁRIOS ====================
 
   /**

@@ -1,24 +1,16 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet, StatusBar, Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 
 export const ScreenContainer = ({ children }) => {
     const { theme } = useTheme();
-
-    // Garantir que theme existe
-    const safeTheme = theme || {
-        background: '#FFFFFF',
-    };
+    const safeTheme = theme || { background: '#0A0A0A' };
 
     return (
         <SafeAreaView
-            style={[
-                styles.container,
-                {
-                    backgroundColor: safeTheme.background,
-                    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
-                }
-            ]}
+            style={[styles.container, { backgroundColor: safeTheme.background }]}
+            edges={['top', 'left', 'right']}
         >
             {children}
         </SafeAreaView>
@@ -30,4 +22,3 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 });
-

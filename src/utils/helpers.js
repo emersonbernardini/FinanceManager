@@ -107,7 +107,7 @@ export const calculateByCategory = (transactions, categories) => {
   
   categories.forEach(cat => {
     const total = transactions
-      .filter(t => t.category === cat.id && t.type === 'expense')
+      .filter(t => t.category === cat.id)
       .reduce((sum, t) => sum + (t.amount || 0), 0);
     
     if (total > 0) {
@@ -329,7 +329,7 @@ export const darkenColor = (color, percent) => {
  */
 export const groupBy = (array, key) => {
   return array.reduce((result, item) => {
-    const group = item[key];
+    const group = typeof key === 'function' ? key(item) : item[key];
     if (!result[group]) {
       result[group] = [];
     }

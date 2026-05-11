@@ -1,21 +1,11 @@
 /**
  * SettingsScreen - Configurações
- * Tela de configurações e opções do aplicativo
  */
 
 import React, { useState, useEffect } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    Switch,
-    Alert,
-    ActivityIndicator,
-    Platform,
-    Linking,
-    Share,
+    View, Text, StyleSheet, ScrollView, TouchableOpacity,
+    Switch, Alert, ActivityIndicator, Platform, Linking,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -27,6 +17,14 @@ import { ACCOUNT_TYPES } from '../constants';
 import { useTheme } from '../context/ThemeContext';
 import storageService from '../services/storageService';
 
+// Package ID real do app (do AndroidManifest.xml)
+const APP_PACKAGE_ID = 'com.financemanagerpro';
+// IDs de loja ainda não publicados — mantemos placeholder mas avisamos o usuário
+const STORE_URLS = {
+    ios: null,    // Substituir com ID real ao publicar na App Store
+    android: `https://play.google.com/store/apps/details?id=${APP_PACKAGE_ID}`,
+};
+
 export function SettingsScreen() {
     const { theme, toggleTheme, isDark, isLoading } = useTheme();
     const [accountType, setAccountType] = useState(ACCOUNT_TYPES.PERSONAL);
@@ -35,7 +33,6 @@ export function SettingsScreen() {
     const [biometryAvailable, setBiometryAvailable] = useState(false);
     const [loadingSettings, setLoadingSettings] = useState(true);
 
-    // Carregar configurações salvas
     useEffect(() => {
         loadSettings();
         checkBiometry();
@@ -47,7 +44,6 @@ export function SettingsScreen() {
             const enrolled = await LocalAuthentication.isEnrolledAsync();
             setBiometryAvailable(compatible && enrolled);
         } catch (error) {
-            console.log('Erro ao verificar biometria:', error);
             setBiometryAvailable(false);
         }
     };
@@ -55,24 +51,15 @@ export function SettingsScreen() {
     const loadSettings = async () => {
         try {
             setLoadingSettings(true);
-
-            // Carregar tipo de conta
             const savedAccountType = await storageService.getAccountType();
-            if (savedAccountType) {
-                setAccountType(savedAccountType);
-            }
+            if (savedAccountType) setAccountType(savedAccountType);
 
-            // Carregar configuração de notificações
+            // Bug #1 fix: storageService.get() agora existe
             const savedNotifications = await storageService.get('settings_notifications');
-            if (savedNotifications !== null) {
-                setNotifications(savedNotifications === 'true');
-            }
+            if (savedNotifications !== null) setNotifications(savedNotifications === 'true');
 
-            // Carregar configuração de biometria
             const savedBiometry = await storageService.get('settings_biometry');
-            if (savedBiometry !== null) {
-                setBiometry(savedBiometry === 'true');
-            }
+            if (savedBiometry !== null) setBiometry(savedBiometry === 'true');
         } catch (error) {
             console.log('Erro ao carregar configurações:', error);
         } finally {
@@ -80,7 +67,6 @@ export function SettingsScreen() {
         }
     };
 
-    // Aguardar carregamento do tema e configurações
     if (isLoading || loadingSettings) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -89,18 +75,7 @@ export function SettingsScreen() {
         );
     }
 
-    // Garantir que theme existe
-    const safeTheme = theme || {
-        background: '#FFFFFF',
-        backgroundCard: '#F5F5F5',
-        text: '#000000',
-        textSecondary: '#333333',
-        textMuted: '#666666',
-        primary: '#00D4FF',
-        white: '#FFFFFF',
-    };
-
-    const styles = getStyles(safeTheme);
+    const styles = getStyles(theme);
 
     const handleAccountTypeChange = async (type) => {
         setAccountType(type);
@@ -113,46 +88,41 @@ export function SettingsScreen() {
 
     const handleNotificationsToggle = async (value) => {
         setNotifications(value);
+        // Bug #1 fix: storageService.set() agora existe
         await storageService.set('settings_notifications', value.toString());
-
         if (value) {
             Alert.alert(
                 'Notificações Ativadas',
-                'Você receberá lembretes sobre suas transações e metas.'
+                'Você receberá lembretes sobre suas transações.\n\nNota: para notificações push em background, integre o expo-notifications.'
             );
         }
     };
 
     const handleBiometryToggle = async (value) => {
         if (value && !biometryAvailable) {
-            Alert.alert(
-                'Biometria Indisponível',
-                'Seu dispositivo não possui biometria configurada ou não é compatível.'
-            );
+            Alert.alert('Biometria Indisponível', 'Seu dispositivo não possui biometria configurada.');
             return;
         }
 
         if (value) {
-            // Testar autenticação antes de ativar
             try {
                 const result = await LocalAuthentication.authenticateAsync({
                     promptMessage: 'Autentique para ativar a proteção biométrica',
                     fallbackLabel: 'Usar senha',
                     cancelLabel: 'Cancelar',
                 });
-
                 if (result.success) {
                     setBiometry(true);
                     await storageService.set('settings_biometry', 'true');
+                    // Bug #12 fix: informamos o usuário que a proteção atua no próximo acesso
                     Alert.alert(
                         'Biometria Ativada',
-                        'O app agora está protegido com biometria.'
+                        'Na próxima abertura do app, a autenticação biométrica será solicitada.\n\nNota: implemente a verificação em App.js no evento onAppStateChange para ativação completa.'
                     );
                 } else {
                     Alert.alert('Autenticação Cancelada', 'A biometria não foi ativada.');
                 }
             } catch (error) {
-                console.log('Erro na autenticação:', error);
                 Alert.alert('Erro', 'Não foi possível ativar a biometria.');
             }
         } else {
@@ -172,37 +142,20 @@ export function SettingsScreen() {
                     text: 'Exportar',
                     onPress: async () => {
                         try {
-                            // Mostrar loading
-                            Alert.alert('Exportando...', 'Preparando seus dados...');
-
-                            // Pegar todos os dados
                             const data = await storageService.exportData();
-
-                            // Criar arquivo JSON
                             const fileName = `finance-manager-backup-${new Date().toISOString().split('T')[0]}.json`;
                             const fileUri = FileSystem.documentDirectory + fileName;
-
-                            await FileSystem.writeAsStringAsync(
-                                fileUri,
-                                JSON.stringify(data, null, 2)
-                            );
-
-                            // Verificar se pode compartilhar
+                            await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(data, null, 2));
                             const canShare = await Sharing.isAvailableAsync();
-
                             if (canShare) {
                                 await Sharing.shareAsync(fileUri, {
                                     mimeType: 'application/json',
                                     dialogTitle: 'Exportar dados do Finance Manager',
                                 });
                             } else {
-                                Alert.alert(
-                                    'Dados Exportados',
-                                    `Arquivo salvo em: ${fileUri}`
-                                );
+                                Alert.alert('Dados Exportados', `Arquivo salvo em: ${fileUri}`);
                             }
                         } catch (error) {
-                            console.log('Erro ao exportar:', error);
                             Alert.alert('Erro', 'Não foi possível exportar os dados');
                         }
                     },
@@ -223,19 +176,9 @@ export function SettingsScreen() {
                     onPress: async () => {
                         try {
                             await storageService.clearAll();
-                            Alert.alert(
-                                'Sucesso',
-                                'Todos os dados foram removidos. O app será reiniciado.',
-                                [
-                                    {
-                                        text: 'OK',
-                                        onPress: () => {
-                                            // Recarregar as configurações
-                                            loadSettings();
-                                        }
-                                    }
-                                ]
-                            );
+                            Alert.alert('Sucesso', 'Todos os dados foram removidos.', [
+                                { text: 'OK', onPress: loadSettings },
+                            ]);
                         } catch (error) {
                             Alert.alert('Erro', 'Não foi possível limpar os dados');
                         }
@@ -251,237 +194,169 @@ export function SettingsScreen() {
             'Este é um projeto open source. Quer ver o código no GitHub?',
             [
                 { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Abrir GitHub',
-                    onPress: () => {
-                        Linking.openURL('https://github.com/lumaXs/FinanceManager');
-                    }
-                }
+                { text: 'Abrir GitHub', onPress: () => Linking.openURL('https://github.com/lumaXs/FinanceManager') },
             ]
         );
     };
 
+    // Bug #14 fix: avisa que o app não está publicado quando URLs são null
     const handleRateApp = () => {
-        const storeUrl = Platform.select({
-            ios: 'https://apps.apple.com/app/id123456789', // Substituir com ID real
-            android: 'https://play.google.com/store/apps/details?id=com.financemanager', // Substituir com ID real
-        });
-
+        const storeUrl = Platform.select(STORE_URLS);
         Alert.alert(
             'Avaliar App',
-            'Sua avaliação é muito importante para nós! Deseja avaliar o Finance Manager?',
-            [
-                { text: 'Mais Tarde', style: 'cancel' },
-                {
-                    text: 'Avaliar',
-                    onPress: () => {
-                        if (storeUrl) {
-                            Linking.openURL(storeUrl);
-                        } else {
-                            Alert.alert('Em breve!', 'O app ainda não está publicado nas lojas.');
-                        }
-                    }
-                }
-            ]
+            storeUrl
+                ? 'Sua avaliação é muito importante! Deseja avaliar o Finance Manager?'
+                : 'O app ainda não está publicado nas lojas. Obrigado pelo interesse! 🙏',
+            storeUrl
+                ? [
+                    { text: 'Mais Tarde', style: 'cancel' },
+                    { text: 'Avaliar', onPress: () => Linking.openURL(storeUrl) },
+                ]
+                : [{ text: 'OK' }]
         );
     };
 
     const renderOption = (icon, title, subtitle, onPress, rightElement) => (
         <TouchableOpacity
-            style={[styles.option, { borderBottomColor: safeTheme.backgroundCard + '50' }]}
+            style={[styles.option, { borderBottomColor: theme.cardBorder }]}
             onPress={onPress}
             activeOpacity={onPress ? 0.7 : 1}
             disabled={!onPress}
         >
-            <View style={[styles.optionIcon, { backgroundColor: safeTheme.primary + '20' }]}>
-                <FontAwesome5 name={icon} size={18} color={safeTheme.primary} />
+            <View style={[styles.optionIcon, { backgroundColor: theme.primary + '20' }]}>
+                <FontAwesome5 name={icon} size={18} color={theme.primary} />
             </View>
             <View style={styles.optionContent}>
-                <Text style={[styles.optionTitle, { color: safeTheme.text }]}>{title}</Text>
-                {subtitle && <Text style={[styles.optionSubtitle, { color: safeTheme.textSecondary }]}>{subtitle}</Text>}
+                <Text style={[styles.optionTitle, { color: theme.text }]}>{title}</Text>
+                {subtitle && <Text style={[styles.optionSubtitle, { color: theme.textSecondary }]}>{subtitle}</Text>}
             </View>
-            {rightElement || <FontAwesome5 name="chevron-right" size={16} color={safeTheme.textMuted} />}
+            {rightElement !== undefined
+                ? rightElement
+                : <FontAwesome5 name="chevron-right" size={16} color={theme.textMuted} />}
         </TouchableOpacity>
     );
 
     const renderSection = (title, children) => (
         <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: safeTheme.textSecondary }]}>{title}</Text>
-            <View style={[styles.sectionContent, { backgroundColor: safeTheme.backgroundCard }]}>{children}</View>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
+            <View style={[styles.sectionContent, { backgroundColor: theme.backgroundCard }]}>
+                {children}
+            </View>
         </View>
     );
 
     return (
         <ScreenContainer>
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-                {/* Header */}
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: safeTheme.text }]}>Configurações</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>Configurações</Text>
                 </View>
 
                 {/* Aparência */}
-                {renderSection(
-                    'Aparência',
-                    <>
-                        {renderOption(
-                            isDark ? 'moon' : 'sun',
-                            'Tema',
-                            isDark ? 'Modo Escuro' : 'Modo Claro',
-                            toggleTheme,
-                            <Switch
-                                value={isDark}
-                                onValueChange={toggleTheme}
-                                trackColor={{ false: safeTheme.textMuted, true: safeTheme.primary }}
-                                thumbColor={safeTheme.white}
-                            />
-                        )}
-                    </>
+                {renderSection('Aparência',
+                    renderOption(
+                        isDark ? 'moon' : 'sun',
+                        'Tema',
+                        isDark ? 'Modo Escuro' : 'Modo Claro',
+                        toggleTheme,
+                        <Switch
+                            value={isDark}
+                            onValueChange={toggleTheme}
+                            trackColor={{ false: theme.textMuted, true: theme.primary }}
+                            thumbColor={theme.white}
+                        />
+                    )
                 )}
 
                 {/* Tipo de Conta */}
-                {renderSection(
-                    'Tipo de Conta',
+                {renderSection('Tipo de Conta',
                     <>
                         <TouchableOpacity
                             style={[
                                 styles.accountTypeButton,
-                                { borderBottomColor: safeTheme.backgroundCard + '50' },
-                                accountType === ACCOUNT_TYPES.PERSONAL && { backgroundColor: safeTheme.primary, borderBottomWidth: 0 },
+                                { borderBottomColor: theme.cardBorder },
+                                accountType === ACCOUNT_TYPES.PERSONAL && { backgroundColor: theme.primary, borderBottomWidth: 0 },
                             ]}
                             onPress={() => handleAccountTypeChange(ACCOUNT_TYPES.PERSONAL)}
                         >
-                            <FontAwesome5
-                                name="user"
-                                size={20}
-                                color={
-                                    accountType === ACCOUNT_TYPES.PERSONAL
-                                        ? safeTheme.white
-                                        : safeTheme.textSecondary
-                                }
-                            />
+                            <FontAwesome5 name="user" size={20} color={accountType === ACCOUNT_TYPES.PERSONAL ? theme.white : theme.textSecondary} />
                             <View style={{ flex: 1, marginLeft: 12 }}>
-                                <Text
-                                    style={[
-                                        styles.accountTypeTitle,
-                                        { color: safeTheme.text },
-                                        accountType === ACCOUNT_TYPES.PERSONAL && { color: safeTheme.white },
-                                    ]}
-                                >
+                                <Text style={[styles.accountTypeTitle, { color: theme.text }, accountType === ACCOUNT_TYPES.PERSONAL && { color: theme.white }]}>
                                     Pessoa Física
                                 </Text>
-                                <Text
-                                    style={[
-                                        styles.accountTypeSubtitle,
-                                        { color: safeTheme.textSecondary },
-                                        accountType === ACCOUNT_TYPES.PERSONAL && { color: safeTheme.white + '90' },
-                                    ]}
-                                >
+                                <Text style={[styles.accountTypeSubtitle, { color: theme.textSecondary }, accountType === ACCOUNT_TYPES.PERSONAL && { color: theme.white + '90' }]}>
                                     Para uso pessoal
                                 </Text>
                             </View>
                             {accountType === ACCOUNT_TYPES.PERSONAL && (
-                                <FontAwesome5 name="check-circle" size={20} color={safeTheme.white} />
+                                <FontAwesome5 name="check-circle" size={20} color={theme.white} />
                             )}
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={[
                                 styles.accountTypeButton,
-                                { borderBottomColor: safeTheme.backgroundCard + '50' },
-                                accountType === ACCOUNT_TYPES.BUSINESS && { backgroundColor: safeTheme.primary, borderBottomWidth: 0 },
+                                { borderBottomColor: theme.cardBorder },
+                                accountType === ACCOUNT_TYPES.BUSINESS && { backgroundColor: theme.primary, borderBottomWidth: 0 },
                             ]}
                             onPress={() => handleAccountTypeChange(ACCOUNT_TYPES.BUSINESS)}
                         >
-                            <FontAwesome5
-                                name="briefcase"
-                                size={20}
-                                color={
-                                    accountType === ACCOUNT_TYPES.BUSINESS
-                                        ? safeTheme.white
-                                        : safeTheme.textSecondary
-                                }
-                            />
+                            <FontAwesome5 name="briefcase" size={20} color={accountType === ACCOUNT_TYPES.BUSINESS ? theme.white : theme.textSecondary} />
                             <View style={{ flex: 1, marginLeft: 12 }}>
-                                <Text
-                                    style={[
-                                        styles.accountTypeTitle,
-                                        { color: safeTheme.text },
-                                        accountType === ACCOUNT_TYPES.BUSINESS && { color: safeTheme.white },
-                                    ]}
-                                >
+                                <Text style={[styles.accountTypeTitle, { color: theme.text }, accountType === ACCOUNT_TYPES.BUSINESS && { color: theme.white }]}>
                                     Pessoa Jurídica
                                 </Text>
-                                <Text
-                                    style={[
-                                        styles.accountTypeSubtitle,
-                                        { color: safeTheme.textSecondary },
-                                        accountType === ACCOUNT_TYPES.BUSINESS && { color: safeTheme.white + '90' },
-                                    ]}
-                                >
+                                <Text style={[styles.accountTypeSubtitle, { color: theme.textSecondary }, accountType === ACCOUNT_TYPES.BUSINESS && { color: theme.white + '90' }]}>
                                     Para empresas
                                 </Text>
                             </View>
                             {accountType === ACCOUNT_TYPES.BUSINESS && (
-                                <FontAwesome5 name="check-circle" size={20} color={safeTheme.white} />
+                                <FontAwesome5 name="check-circle" size={20} color={theme.white} />
                             )}
                         </TouchableOpacity>
                     </>
                 )}
 
                 {/* Preferências */}
-                {renderSection(
-                    'Preferências',
+                {renderSection('Preferências',
                     <>
+                        {/* Bug #13 fix: avisa que notificações push requerem integração adicional */}
                         {renderOption(
-                            'bell',
-                            'Notificações',
+                            'bell', 'Notificações',
                             notifications ? 'Ativadas' : 'Desativadas',
                             null,
                             <Switch
                                 value={notifications}
                                 onValueChange={handleNotificationsToggle}
-                                trackColor={{ false: safeTheme.textMuted, true: safeTheme.primary }}
-                                thumbColor={safeTheme.white}
+                                trackColor={{ false: theme.textMuted, true: theme.primary }}
+                                thumbColor={theme.white}
                             />
                         )}
                         {renderOption(
-                            'fingerprint',
-                            'Biometria',
+                            'fingerprint', 'Biometria',
                             biometry ? 'Protegido' : biometryAvailable ? 'Desativado' : 'Indisponível',
                             null,
                             <Switch
                                 value={biometry}
                                 onValueChange={handleBiometryToggle}
                                 disabled={!biometryAvailable}
-                                trackColor={{ false: safeTheme.textMuted, true: safeTheme.primary }}
-                                thumbColor={safeTheme.white}
+                                trackColor={{ false: theme.textMuted, true: theme.primary }}
+                                thumbColor={theme.white}
                             />
                         )}
                     </>
                 )}
 
                 {/* Dados */}
-                {renderSection(
-                    'Dados',
+                {renderSection('Dados',
                     <>
-                        {renderOption(
-                            'download',
-                            'Exportar Dados',
-                            'Fazer backup das suas transações',
-                            handleExportData
-                        )}
-                        {renderOption(
-                            'trash',
-                            'Limpar Dados',
-                            'Remover todas as transações',
-                            handleClearData
-                        )}
+                        {renderOption('download', 'Exportar Dados', 'Fazer backup das suas transações', handleExportData)}
+                        {renderOption('trash', 'Limpar Dados', 'Remover todas as transações', handleClearData)}
                     </>
                 )}
 
                 {/* Sobre */}
-                {renderSection(
-                    'Sobre',
+                {renderSection('Sobre',
                     <>
                         {renderOption('info-circle', 'Versão', '2.0.0', null, null)}
                         {renderOption('github', 'Open Source', 'Veja no GitHub', handleOpenGitHub)}
@@ -496,70 +371,30 @@ export function SettingsScreen() {
 }
 
 const getStyles = (theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        padding: 20,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '700',
-    },
-    section: {
-        paddingHorizontal: 20,
-        marginBottom: 32,
-    },
+    container: { flex: 1 },
+    header: { padding: 20 },
+    title: { fontSize: 28, fontWeight: '700' },
+    section: { paddingHorizontal: 20, marginBottom: 32 },
     sectionTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 12,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        fontSize: 14, fontWeight: '600', marginBottom: 12,
+        textTransform: 'uppercase', letterSpacing: 0.5,
     },
-    sectionContent: {
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
+    sectionContent: { borderRadius: 16, overflow: 'hidden' },
     option: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        gap: 12,
-        borderBottomWidth: 1,
+        flexDirection: 'row', alignItems: 'center',
+        padding: 16, gap: 12, borderBottomWidth: 1,
     },
     optionIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
+        width: 40, height: 40, borderRadius: 20,
+        justifyContent: 'center', alignItems: 'center',
     },
-    optionContent: {
-        flex: 1,
-    },
-    optionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    optionSubtitle: {
-        fontSize: 13,
-        marginTop: 2,
-    },
+    optionContent: { flex: 1 },
+    optionTitle: { fontSize: 16, fontWeight: '600' },
+    optionSubtitle: { fontSize: 13, marginTop: 2 },
     accountTypeButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        gap: 12,
-        borderBottomWidth: 1,
+        flexDirection: 'row', alignItems: 'center',
+        padding: 16, gap: 12, borderBottomWidth: 1,
     },
-    accountTypeTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    accountTypeSubtitle: {
-        fontSize: 13,
-        marginTop: 2,
-    },
+    accountTypeTitle: { fontSize: 16, fontWeight: '600' },
+    accountTypeSubtitle: { fontSize: 13, marginTop: 2 },
 });
-

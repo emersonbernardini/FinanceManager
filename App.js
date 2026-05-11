@@ -11,8 +11,10 @@ import {
     TransactionsScreen,
     CategoriesScreen,
     SettingsScreen,
+    OpenFinanceScreen,
 } from './src/screens';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import { TransactionsProvider } from './src/context/TransactionsContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -77,6 +79,15 @@ function AppNavigator() {
                         }}
                     />
                     <Tab.Screen
+                        name="Open Finance"
+                        component={OpenFinanceScreen}
+                        options={{
+                            tabBarIcon: ({ color, size }) => (
+                                <FontAwesome5 name="university" size={size} color={color} />
+                            ),
+                        }}
+                    />
+                    <Tab.Screen
                         name="Configurações"
                         component={SettingsScreen}
                         options={{
@@ -96,7 +107,9 @@ export default function App() {
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>
                 <ThemeProvider>
-                    <AppNavigator />
+                    <TransactionsProvider>
+                        <AppNavigator />
+                    </TransactionsProvider>
                 </ThemeProvider>
             </SafeAreaProvider>
         </GestureHandlerRootView>

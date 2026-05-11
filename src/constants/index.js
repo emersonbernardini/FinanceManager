@@ -34,6 +34,7 @@ export const COLORS = {
 
         // Transparências
         overlay: 'rgba(0,0,0,0.5)',
+        cardBorder: '#E0E0E0',
     },
 
     dark: {
@@ -65,6 +66,7 @@ export const COLORS = {
 
         // Transparências
         overlay: 'rgba(0,0,0,0.7)',
+        cardBorder: '#333333',
     },
 };
 
@@ -78,23 +80,23 @@ export const TRANSACTION_CATEGORIES = {
         { id: 'saude', name: 'Saúde', icon: 'heartbeat', color: '#F38181' },
         { id: 'educacao', name: 'Educação', icon: 'graduation-cap', color: '#AA96DA' },
         { id: 'lazer', name: 'Lazer', icon: 'gamepad', color: '#FCBAD3' },
-        { id: 'compras', name: 'Compras', icon: 'shopping-bag', color: '#FFFFD2' },
+        { id: 'compras', name: 'Compras', icon: 'shopping-bag', color: '#F4C542' },
         { id: 'vestuario', name: 'Vestuário', icon: 'tshirt', color: '#A8D8EA' },
         { id: 'servicos', name: 'Serviços', icon: 'wrench', color: '#FFD93D' },
-        { id: 'impostos', name: 'Impostos', icon: 'file-text', color: '#6C5CE7' },
-        { id: 'investimentos', name: 'Investimentos', icon: 'trending-up', color: '#00B894' },
-        { id: 'outros_gastos', name: 'Outros', icon: 'more-horizontal', color: '#636E72' },
+        { id: 'impostos', name: 'Impostos', icon: 'file-alt', color: '#6C5CE7' },
+        { id: 'investimentos', name: 'Investimentos', icon: 'chart-line', color: '#00B894' },
+        { id: 'outros_gastos', name: 'Outros', icon: 'ellipsis-h', color: '#636E72' },
     ],
 
     // Categorias de Receitas
     INCOME: [
         { id: 'salario', name: 'Salário', icon: 'briefcase', color: '#00D2D3' },
         { id: 'freelance', name: 'Freelance', icon: 'laptop', color: '#55EFC4' },
-        { id: 'investimentos_renda', name: 'Rendimentos', icon: 'trending-up', color: '#74B9FF' },
+        { id: 'investimentos_renda', name: 'Rendimentos', icon: 'chart-line', color: '#74B9FF' },
         { id: 'vendas', name: 'Vendas', icon: 'shopping-cart', color: '#A29BFE' },
         { id: 'aluguel', name: 'Aluguel', icon: 'key', color: '#FD79A8' },
         { id: 'bonus', name: 'Bônus', icon: 'gift', color: '#FDCB6E' },
-        { id: 'outros_ganhos', name: 'Outros', icon: 'plus-circle', color: '#636E72' },
+        { id: 'outros_ganhos', name: 'Outros', icon: 'ellipsis-h', color: '#636E72' },
     ],
 };
 
